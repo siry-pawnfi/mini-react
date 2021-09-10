@@ -28,6 +28,7 @@ function createTextElement(text){
   }
 }
 
+////创建dom元素
 function createDom(fiber){
   //生成对用的dom
   let dom = 
@@ -116,14 +117,21 @@ function commitWork(fiber){
   if(!fiber){
     return
   }
-  const domParent = fiber.parent.dom
+  let domParentFiber = fiber.parent
+  while(!domParentFiber.dom){
+    domParentFiber = domParentFiber.parent
+  }
+  const domParent = domParentFiber.dom
+
+  // const domParent = fiber.parent.dom
   if(
     fiber.effectTag === 'PLACEMENT' &&
     fiber.dom != null
   ){
     domParent.appendChild(fiber.dom)
   }else if(fiber.effectTag === 'DELETION'){
-    domParent.removeChild(fiber.dom)
+    // domParent.removeChild(fiber.dom)
+    commitDeletion(fiber, domParent)
   }else if(
     fiber.effectTag === 'UPDATE' &&
     fiber.dom != null
@@ -136,6 +144,14 @@ function commitWork(fiber){
   }
   commitWork(fiber.child)
   commitWork(fiber.sibling)
+}
+
+function commitDeletion(fiber,domParent){
+  if(fiber.dom){
+    domParent.removeChild(fiber.child)
+  }else{
+    commitDeletion(fiber.child, domParent)
+  }
 }
 
 function render(element, container){
@@ -182,39 +198,29 @@ function performUnitOfWork(fiber){
   //每一个fiber节点都有链接到第一个子元素(child)和下一个兄弟节点(slbing),父节点(parent)
   //如果fiber没有child,则执行subing
 
-  //创建新的节点到dom中
-  if(!fiber.dom){
-    fiber.dom = createDom(fiber)
+  // //创建新的节点到dom中
+  // if(!fiber.dom){
+  //   fiber.dom = createDom(fiber)
+  // }
+
+  // // if(fiber.parent){
+  // //   fiber.parent.dom.appendChild(fiber.dom)
+  // // }
+
+
+  // //对于每一个child都创建新的fiber
+  // const elements = fiber.props.children
+  // reconcileChildren(fiber, elements)
+
+
+  const isFunctionComponent = 
+    fiber.type instanceof Function
+
+  if(isFunctionComponent){
+    updateFunctionComponent(fiber)
+  }else{
+    updateHostComponent(fiber)
   }
-
-  // if(fiber.parent){
-  //   fiber.parent.dom.appendChild(fiber.dom)
-  // }
-
-
-  //对于每一个child都创建新的fiber
-  const elements = fiber.props.children
-  reconcileChildren(fiber, elements)
-
-
-  // while(index < elements.length){
-  //   const element = elements[index]
-
-  //   const newFiber = {
-  //     tyep:element.type,
-  //     props:element.props,
-  //     parent:fiber,
-  //     dom:null,
-  //   }
-  //    //将newFiber添加到fiber tree中
-  //    if(index === 0){
-  //      fiber.child = newFiber
-  //    }else{
-  //      prevSibing.sibling = newFiber
-  //    }
-  //    prevSibing = newFiber
-  //    index++
-  // }
   
   if(fiber.child){
     return fiber.child
@@ -228,7 +234,63 @@ function performUnitOfWork(fiber){
   }
 
 }
+
+let wipFiber = null
+let hookIndex = null
+
+function updateFunctionComponent(fiber){
+  wipFiber = fiber
+  hookIndex = 0
+  wipFiber.hooks = []
+  const children = [fiber.type(fiber.props)]
+  reconcileChildren(fiber, children)
+}
+
+function updateHostComponent(fiber){
+    // //创建新的节点到dom中
+  if(!fiber.dom){
+    fiber.dom = createDom(fiber)
+  }
+
+  //对于每一个child都创建新的fiber
+  const elements = fiber.props.children
+  reconcileChildren(fiber, elements)
+
+}
+
+function useState(initial){
+  const oldHook = 
+    wipFiber.alternate &&
+    wipFiber.alternate.hooks &&
+    wipFiber.alternate.hooks[hookIndex]
+  
+  const hook = {
+    state:oldHook ? oldHook.state : initial,
+    queue:[],
+  }
+
+  const actions = oldHook ? oldHook.queue : []
+  actions.forEach(action => {
+    hook.state = action(hook.state)
+  })
+
+  const setState = action => {
+    hook.queue.push(action)
+    wipRoot = {
+      dom:currentRoot.dom,
+      props:currentRoot.props,
+      alternate:currentRoot,
+    }
+    nextUnitOfWork = wipRoot
+    deletions = []
+  }
+
+  wipFiber.hooks.push(hook)
+  hookIndex++
+  return [hook.state, setState]
+}
 function reconcileChildren(wipFiber,elements){
+  console.log(elements)
   let index = 0
   let oldFiber = 
     wipFiber.alternate && wipFiber.alternate.child
@@ -239,6 +301,7 @@ function reconcileChildren(wipFiber,elements){
     index < elements.length ||
     oldFiber != null
   ){
+    console.log(index,">>>>>")
     const element = elements[index]
     let newFiber = null
 
@@ -294,30 +357,41 @@ function reconcileChildren(wipFiber,elements){
 
 const Didact = {
   createElement,
-  render
+  render,
+  useState,
 };
 
 
 
+// /** @jsx Didact.createElement */
+// const container = document.getElementById("root");
+
+// const updateValue = e => {
+//   rerender(e.target.value)
+// }
+// const rerender = value => {
+//   const element = (
+//     <div>
+//       <input onInput={updateValue} value={value}/>
+//       <h2>Hello {value}</h2>
+//     </div>
+//   )
+//   Didact.render(element, container)
+// }
+// rerender('World')
+
 /** @jsx Didact.createElement */
-const container = document.getElementById("root");
-
-const updateValue = e => {
-  rerender(e.target.value)
-}
-const rerender = value => {
-  const element = (
-    <div>
-      <input onInput={updateValue} value={value}/>
-      <h2>Hello {value}</h2>
-    </div>
+function Counter(){
+  const [state,setState] = Didact.useState(1)
+  return (
+    <h1 onClick={()=>setState(c => c + 1)}>
+      Count:{state}
+    </h1>
   )
-  Didact.render(element, container)
 }
-
-
-rerender('World')
-
+const element = <Counter/>
+const container = document.getElementById("root");
+Didact.render(element, container)
 
 
 // ReactDOM.render(
