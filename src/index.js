@@ -155,7 +155,7 @@ function commitDeletion(fiber,domParent){
 }
 
 function render(element, container){
-  //设置nextUnitOfWork最为fiber tree的root
+  //设置nextUnitOfWork为fiber tree的root
   wipRoot = {
     dom:container,
     props:{
@@ -384,9 +384,11 @@ const Didact = {
 function Counter(){
   const [state,setState] = Didact.useState(1)
   return (
+    <div>
     <h1 onClick={()=>setState(c => c + 1)}>
       Count:{state}
     </h1>
+    </div>
   )
 }
 const element = <Counter/>
