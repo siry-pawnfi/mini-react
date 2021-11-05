@@ -1,8 +1,11 @@
-import React from 'react'
-import logo from './logo.svg';
-import './App.css';
+import * as React from 'react'
+import {useInterval} from './customHooks/useInterval'
 
 function App() {
+  const [count,setCount] = React.useState(0)
+  useInterval(()=>{
+    setCount(count=>count+1)
+  },1000)
   return (
     <div className="App">
       <header className="App-header">
@@ -16,7 +19,7 @@ function App() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Learn React
+          Learn React {count}
         </a>
       </header>
     </div>

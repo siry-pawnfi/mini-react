@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 
 
-function useInterval(callback, delay = 1000){
+export function useInterval(callback, delay = 1000){
     const saveCallbacked = useRef()
 
     //保存新的回调在每次更新以及第一次挂载的时候
@@ -27,4 +27,4 @@ function useInterval(callback, delay = 1000){
         }
     },[delay])
 }
-    
+
